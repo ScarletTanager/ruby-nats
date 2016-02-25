@@ -628,15 +628,16 @@ module NATS
   end
 
   def connection_completed #:nodoc:
+    $stderr.puts 'IN: connection_completed'
     @connected = true unless @ssl
 
     current = server_pool.first
     current[:was_connected] = true
     current[:reconnect_attempts] = 0
 
+    @subs.each_pair { |k, v| send_command("SUB #{v[:subject]} #{v[:queue]} #{k}#{CR_LF}") }
     if reconnecting?
       cancel_reconnect_timer
-      @subs.each_pair { |k, v| send_command("SUB #{v[:subject]} #{v[:queue]} #{k}#{CR_LF}") }
     end
 
     unless user_err_cb? or reconnecting?
@@ -763,6 +764,7 @@ module NATS
   end
 
   def send_command(command, priority = false) #:nodoc:
+    $stderr.puts "COMMAND: #{command}"
     EM.next_tick { flush_pending } if (connected? && @pending.nil?)
     @pending ||= []
     @pending << command unless priority
